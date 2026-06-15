@@ -246,6 +246,14 @@
               <span>Ultima volta</span>
               <input type="text" name="lastLap" value="1:22.005" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="1:22.005" data-mask="lap" required>
             </label>
+            <label>
+              <span>Modo: registrar todas as voltas</span>
+              <select name="allLapsMode" data-mask="title">
+                <option value="placeholder" selected>Gerar automaticamente (melhor/ultima)</option>
+                <option value="single">Somente best/last (legado)</option>
+              </select>
+            </label>
+
             <button class="btn btn-primary" type="submit">Adicionar corrida</button>
           </form>
           <p class="form-message" id="raceFormMessage"></p>

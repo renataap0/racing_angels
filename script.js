@@ -1,4 +1,5 @@
 const canvas = document.getElementById("particlesCanvas");
+
 const ctx = canvas.getContext("2d");
 const speedValue = document.getElementById("speedValue");
 const speedReadout = document.getElementById("speedReadout");
@@ -60,12 +61,20 @@ const roles = {
 const storageKeys = {
   role: "racingAngelsRole",
   user: "racingAngelsUser",
+
+  // legado (app atual)
   races: "racingAngelsRaces",
   drivers: "racingAngelsDrivers",
   tracks: "racingAngelsTracks",
   cars: "racingAngelsCars",
-  cart: "racingAngelsCart"
+
+  // campeonato (nova estrutura)
+  season: "racingAngelsSeason",
+
+  cart: "racingAngelsCart",
+  orders: "racingAngelsOrders"
 };
+
 
 const defaultRaces = [
   {
@@ -405,6 +414,32 @@ function getRaces() {
 function saveRaces(races) {
   writeJSON(storageKeys.races, races);
 }
+
+const DEFAULT_SEASON = {
+  version: 1,
+  createdAt: new Date().toISOString(),
+  rounds: []
+};
+
+function getSeason() {
+  const stored = readJSON(storageKeys.season, null);
+
+  if (!stored || typeof stored !== "object") {
+    return structuredClone(DEFAULT_SEASON);
+  }
+
+  // normaliza shape
+  return {
+    version: Number(stored.version) || 1,
+    createdAt: stored.createdAt || new Date().toISOString(),
+    rounds: Array.isArray(stored.rounds) ? stored.rounds : []
+  };
+}
+
+function saveSeason(season) {
+  writeJSON(storageKeys.season, season);
+}
+
 
 function getDrivers() {
   return readJSON(storageKeys.drivers, defaultDrivers);
@@ -1205,30 +1240,174 @@ function setupManualRaceForm() {
     const raceName = formData.get("raceName").trim();
     const driverName = formData.get("driverName").trim();
     const teamName = getCurrentRole() === "team" ? currentTeam : formData.get("teamName").trim();
+
+    const lapsCount = Number(formData.get("laps"));
+    const bestLapRaw = formData.get("bestLap").trim();
+    const lastLapRaw = formData.get("lastLap").trim();
+
+    const allLapsMode = formData.get("allLapsMode") || "placeholder";
+
     const newRace = {
       id: Date.now(),
       race: raceName,
       driver: driverName,
       team: teamName,
-      laps: Number(formData.get("laps")),
-      bestLap: formData.get("bestLap").trim(),
-      lastLap: formData.get("lastLap").trim(),
+      laps: lapsCount,
+      bestLap: bestLapRaw,
+      lastLap: lastLapRaw,
       track: inferTrackName(raceName),
       car: getRaceCarModel({ driver: driverName }),
       status: "Manual"
     };
 
+    // legado (mantém o app funcionando)
     const races = getRaces();
     races.push(newRace);
     saveRaces(races);
+
+    // campeonato: registra todas as voltas (MVP via geração a partir de best/last)
+    if (allLapsMode === "placeholder") {
+      upsertSeasonRoundFromManualRace(newRace);
+    }
+
     updateDashboardMetrics();
     renderTrackCars();
     updateTrackMonitor();
+
 
     if (raceFormMessage) {
       raceFormMessage.textContent = `Corrida adicionada. Melhor volta: ${newRace.bestLap}.`;
     }
   });
+}
+
+function buildSeasonFromRacesIfNeeded() {
+  const season = getSeason();
+
+  if (season.rounds?.length) {
+    return;
+  }
+
+  // MVP: converte corridas legadas para 8 “rounds” por pista
+  const legacyRaces = getRaces();
+
+  const tracks = [...new Set(legacyRaces.map((r) => getRaceTrackName(r)))];
+  const rounds = [];
+
+  // garante 8 etapas
+  const paddedTracks = tracks.concat(Array.from({ length: Math.max(0, 8 - tracks.length) }, (_, i) => `Pista ${i + 1}`)).slice(0, 8);
+
+  for (let i = 0; i < 8; i += 1) {
+    rounds.push({
+      id: i + 1,
+      index: i + 1,
+      trackName: paddedTracks[i],
+      status: "finished",
+      recordsByDriver: {}
+    });
+  }
+
+  legacyRaces.forEach((race) => {
+    const trackName = getRaceTrackName(race);
+    const trackIndex = paddedTracks.findIndex((t) => normalizeKey(t) === normalizeKey(trackName));
+
+    // se não achou, cai no 1º round
+    const roundIndex = trackIndex >= 0 ? trackIndex : 0;
+    const round = rounds[roundIndex];
+
+    const driverKey = normalizeKey(race.driver);
+    if (!round.recordsByDriver[driverKey]) {
+      round.recordsByDriver[driverKey] = {
+        name: race.driver,
+        team: race.team,
+        car: race.car || getRaceCarModel(race),
+        lapTimesMs: [],
+        createdAt: new Date().toISOString()
+      };
+    }
+
+    const bestMs = parseLapTime(race.bestLap);
+    const lastMs = parseLapTime(race.lastLap);
+
+    // placeholder para “todas as voltas”: tenta usar quantidade de laps e duplica
+    const lapCount = Number(race.laps) || 1;
+    const baseList = Number.isFinite(lastMs) ? [bestMs, lastMs] : [bestMs];
+
+    const lapTimesMs = Array.from({ length: lapCount }, (_, idx) => baseList[idx % baseList.length]).filter((ms) => Number.isFinite(ms));
+    round.recordsByDriver[driverKey].lapTimesMs.push(...lapTimesMs);
+  });
+
+  const newSeason = { ...season, rounds };
+  saveSeason(newSeason);
+}
+
+function getRoundIndexFromRaceName(raceName, season) {
+  const normalizedRace = normalizeKey(raceName);
+  const tracks = (season?.rounds || []).map((r) => r.trackName);
+  const idx = tracks.findIndex((t) => normalizedRace.includes(normalizeKey(t)));
+  return idx >= 0 ? idx : 0;
+}
+
+function generateLapTimesMsFromBestLast(lapsCount, bestMs, lastMs, strategy = "placeholder") {
+  const n = Math.max(1, Number(lapsCount) || 1);
+  const best = Number.isFinite(bestMs) ? bestMs : Number.POSITIVE_INFINITY;
+  const last = Number.isFinite(lastMs) ? lastMs : best;
+
+  if (!Number.isFinite(best) && !Number.isFinite(last)) {
+    return [];
+  }
+
+  // “melhor/ultima” vira uma sequência com pequena curvatura para parecer natural
+  const delta = Number.isFinite(best) && Number.isFinite(last) ? (last - best) : 0;
+  const scale = strategy === "aggressive" ? 1.08 : 1;
+
+  const lapTimesMs = [];
+  for (let i = 0; i < n; i += 1) {
+    const t = n === 1 ? 0 : i / (n - 1); // 0..1
+
+    // curva: começa perto do melhor, pode piorar ou estabilizar rumo ao last
+    const curve = (t * t) * delta * scale;
+    const wobble = Math.sin(i * 0.9 + n) * 18; // ±18ms (só para variação visual)
+
+    const ms = (Number.isFinite(best) ? best : last) + curve + wobble;
+    lapTimesMs.push(ms);
+  }
+
+  return lapTimesMs.filter((ms) => Number.isFinite(ms));
+}
+
+function upsertSeasonRoundFromManualRace(newRace) {
+  const season = getSeason();
+
+  if (!season.rounds?.length) {
+    buildSeasonFromRacesIfNeeded();
+  }
+
+  const season2 = getSeason();
+  const roundIndex = getRoundIndexFromRaceName(newRace.race, season2);
+  const rounds = [...season2.rounds];
+  const round = rounds[roundIndex];
+
+  const driverKey = normalizeKey(newRace.driver);
+  if (!round.recordsByDriver[driverKey]) {
+    round.recordsByDriver[driverKey] = {
+      name: newRace.driver,
+      team: newRace.team,
+      car: newRace.car || getRaceCarModel({ driver: newRace.driver }),
+      lapTimesMs: [],
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  const bestMs = parseLapTime(newRace.bestLap);
+  const lastMs = parseLapTime(newRace.lastLap);
+
+  const lapCount = Number(newRace.laps) || 1;
+  const lapTimesMs = generateLapTimesMsFromBestLast(lapCount, bestMs, lastMs, "placeholder");
+  round.recordsByDriver[driverKey].lapTimesMs = [...round.recordsByDriver[driverKey].lapTimesMs, ...lapTimesMs];
+
+  rounds[roundIndex] = round;
+  saveSeason({ ...season2, rounds });
 }
 
 function setupDashboardPage() {
@@ -2058,33 +2237,140 @@ function setupShopPage() {
   const shopButtons = document.querySelectorAll(".shop-button");
   const cartList = document.getElementById("cartList");
   const cartCount = document.getElementById("cartCount");
+  const cartSubtotal = document.getElementById("cartSubtotal");
+  const cartShipping = document.getElementById("cartShipping");
+  const cartTotal = document.getElementById("cartTotal");
   const clearCartButton = document.getElementById("clearCartButton");
+  const checkoutForm = document.getElementById("checkoutForm");
+  const checkoutButton = document.getElementById("checkoutButton");
+  const checkoutMessage = document.getElementById("checkoutMessage");
+  const paymentMethod = document.getElementById("paymentMethod");
+  const cardFields = document.getElementById("cardFields");
 
   if (!shopButtons.length || !cartList || !cartCount) {
     return;
   }
 
+  const products = Array.from(shopButtons).reduce((catalog, button) => {
+    catalog[button.dataset.product] = {
+      name: button.dataset.product,
+      price: Number(button.dataset.price) || 0
+    };
+
+    return catalog;
+  }, {});
+  const legacyPrices = {
+    "Camisa Team Carbon": 189.9,
+    "Bone Halo Apex": 119.9,
+    "Jaqueta Pit Lane": 349.9
+  };
+
+  function formatCurrency(value) {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    }).format(value);
+  }
+
+  function normalizeCartItem(item) {
+    if (typeof item === "string") {
+      return {
+        name: item,
+        price: products[item]?.price || legacyPrices[item] || 0,
+        quantity: 1
+      };
+    }
+
+    return {
+      name: item.name,
+      price: Number(item.price) || products[item.name]?.price || legacyPrices[item.name] || 0,
+      quantity: Math.max(1, Number(item.quantity) || 1)
+    };
+  }
+
   function getCart() {
-    return readJSON(storageKeys.cart, []);
+    return readJSON(storageKeys.cart, [])
+      .map(normalizeCartItem)
+      .filter((item) => item.name);
   }
 
   function saveCart(cart) {
     writeJSON(storageKeys.cart, cart);
   }
 
+  function calculateCart(cart = getCart()) {
+    const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    const shipping = subtotal <= 0 ? 0 : subtotal >= 500 ? 0 : 24.9;
+
+    return {
+      subtotal,
+      shipping,
+      total: subtotal + shipping,
+      quantity: cart.reduce((total, item) => total + item.quantity, 0)
+    };
+  }
+
+  function saveOrder(order) {
+    const orders = readJSON(storageKeys.orders, []);
+    orders.unshift(order);
+    writeJSON(storageKeys.orders, orders.slice(0, 12));
+  }
+
   function renderCart() {
     const cart = getCart();
+    const totals = calculateCart(cart);
 
-    cartCount.textContent = `${cart.length} ${cart.length === 1 ? "item" : "itens"}`;
+    cartCount.textContent = `${totals.quantity} ${totals.quantity === 1 ? "item" : "itens"}`;
     cartList.innerHTML = cart.length
-      ? cart.map((item) => `<li>${escapeHTML(item)}</li>`).join("")
+      ? cart.map((item) => `
+        <li class="cart-item">
+          <div>
+            <strong>${escapeHTML(item.name)}</strong>
+            <span>${item.quantity} x ${formatCurrency(item.price)}</span>
+          </div>
+          <div class="cart-controls">
+            <button type="button" aria-label="Diminuir ${escapeAttribute(item.name)}" data-cart-action="decrease" data-cart-name="${escapeAttribute(item.name)}">-</button>
+            <span>${item.quantity}</span>
+            <button type="button" aria-label="Aumentar ${escapeAttribute(item.name)}" data-cart-action="increase" data-cart-name="${escapeAttribute(item.name)}">+</button>
+            <button type="button" class="cart-remove" data-cart-action="remove" data-cart-name="${escapeAttribute(item.name)}">Remover</button>
+          </div>
+        </li>
+      `).join("")
       : "<li>Nenhum item adicionado.</li>";
+
+    if (cartSubtotal) {
+      cartSubtotal.textContent = formatCurrency(totals.subtotal);
+    }
+
+    if (cartShipping) {
+      cartShipping.textContent = totals.shipping ? formatCurrency(totals.shipping) : "Gratis";
+    }
+
+    if (cartTotal) {
+      cartTotal.textContent = formatCurrency(totals.total);
+    }
+
+    if (checkoutButton) {
+      checkoutButton.disabled = !cart.length;
+    }
+
+    if (clearCartButton) {
+      clearCartButton.disabled = !cart.length;
+    }
   }
 
   shopButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const cart = getCart();
-      cart.push(button.dataset.product);
+      const product = products[button.dataset.product];
+      const existingItem = cart.find((item) => item.name === product.name);
+
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({ ...product, quantity: 1 });
+      }
+
       saveCart(cart);
       renderCart();
       button.textContent = "Adicionado";
@@ -2095,11 +2381,184 @@ function setupShopPage() {
     });
   });
 
-  clearCartButton?.addEventListener("click", () => {
-    saveCart([]);
+  cartList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-cart-action]");
+
+    if (!button) {
+      return;
+    }
+
+    const action = button.dataset.cartAction;
+    const itemName = button.dataset.cartName;
+    let cart = getCart();
+    const item = cart.find((cartItem) => cartItem.name === itemName);
+
+    if (!item) {
+      return;
+    }
+
+    if (action === "increase") {
+      item.quantity += 1;
+    }
+
+    if (action === "decrease") {
+      item.quantity -= 1;
+    }
+
+    if (action === "remove" || item.quantity <= 0) {
+      cart = cart.filter((cartItem) => cartItem.name !== itemName);
+    }
+
+    saveCart(cart);
     renderCart();
   });
 
+  clearCartButton?.addEventListener("click", () => {
+    saveCart([]);
+    renderCart();
+
+    if (checkoutMessage) {
+      checkoutMessage.textContent = "Carrinho limpo.";
+    }
+  });
+
+  function updatePaymentFields() {
+    const isCard = paymentMethod?.value === "card";
+
+    cardFields?.classList.toggle("is-hidden", !isCard);
+    cardFields?.querySelectorAll("input").forEach((input) => {
+      input.disabled = !isCard;
+    });
+  }
+
+  function setupCheckoutMasks() {
+    if (!checkoutForm) {
+      return;
+    }
+
+    const customerName = checkoutForm.elements.customerName;
+    const customerZip = checkoutForm.elements.customerZip;
+    const cardNumber = checkoutForm.elements.cardNumber;
+    const cardExpiry = checkoutForm.elements.cardExpiry;
+    const cardCvv = checkoutForm.elements.cardCvv;
+
+    customerName?.addEventListener("input", () => {
+      customerName.value = sanitizeName(customerName.value);
+    });
+
+    customerName?.addEventListener("blur", () => {
+      customerName.value = titleCaseWords(customerName.value.trim());
+    });
+
+    customerZip?.addEventListener("input", () => {
+      const digits = getDigits(customerZip.value).slice(0, 8);
+      customerZip.value = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    });
+
+    cardNumber?.addEventListener("input", () => {
+      cardNumber.value = getDigits(cardNumber.value)
+        .slice(0, 16)
+        .replace(/(\d{4})(?=\d)/g, "$1 ");
+    });
+
+    cardExpiry?.addEventListener("input", () => {
+      let digits = getDigits(cardExpiry.value).slice(0, 4);
+
+      if (digits.length >= 2) {
+        const month = clampNumber(digits.slice(0, 2), 1, 12);
+        digits = `${String(month).padStart(2, "0")}${digits.slice(2)}`;
+      }
+
+      cardExpiry.value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+    });
+
+    cardCvv?.addEventListener("input", () => {
+      cardCvv.value = getDigits(cardCvv.value).slice(0, 3);
+    });
+  }
+
+  checkoutForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const cart = getCart();
+    const totals = calculateCart(cart);
+
+    if (!cart.length) {
+      if (checkoutMessage) {
+        checkoutMessage.textContent = "Adicione pelo menos um produto antes de finalizar.";
+      }
+      return;
+    }
+
+    const customerName = checkoutForm.elements.customerName;
+    const customerZip = checkoutForm.elements.customerZip;
+    const cardNumber = checkoutForm.elements.cardNumber;
+    const cardExpiry = checkoutForm.elements.cardExpiry;
+    const cardCvv = checkoutForm.elements.cardCvv;
+    const selectedPayment = paymentMethod?.value || "card";
+
+    customerName.value = titleCaseWords(sanitizeName(customerName.value).trim());
+
+    if (getDigits(customerZip.value).length !== 8) {
+      customerZip.focus();
+      if (checkoutMessage) {
+        checkoutMessage.textContent = "Informe um CEP com 8 numeros.";
+      }
+      return;
+    }
+
+    if (selectedPayment === "card") {
+      if (getDigits(cardNumber.value).length !== 16) {
+        cardNumber.focus();
+        if (checkoutMessage) {
+          checkoutMessage.textContent = "Cartao simulado precisa ter 16 numeros.";
+        }
+        return;
+      }
+
+      if (getDigits(cardExpiry.value).length !== 4) {
+        cardExpiry.focus();
+        if (checkoutMessage) {
+          checkoutMessage.textContent = "Validade precisa seguir MM/AA.";
+        }
+        return;
+      }
+
+      if (getDigits(cardCvv.value).length !== 3) {
+        cardCvv.focus();
+        if (checkoutMessage) {
+          checkoutMessage.textContent = "CVV precisa ter 3 numeros.";
+        }
+        return;
+      }
+    }
+
+    const orderCode = `RA-${Date.now().toString().slice(-6)}`;
+    const order = {
+      code: orderCode,
+      date: new Date().toISOString(),
+      customer: customerName.value,
+      email: checkoutForm.elements.customerEmail.value,
+      zip: customerZip.value,
+      payment: selectedPayment,
+      items: cart,
+      totals
+    };
+
+    saveOrder(order);
+    saveCart([]);
+    renderCart();
+    checkoutForm.reset();
+    updatePaymentFields();
+
+    if (checkoutMessage) {
+      checkoutMessage.textContent = `Compra simulada aprovada. Pedido ${orderCode} no total de ${formatCurrency(totals.total)}.`;
+    }
+  });
+
+  paymentMethod?.addEventListener("change", updatePaymentFields);
+  setupCheckoutMasks();
+  updatePaymentFields();
   renderCart();
 }
 

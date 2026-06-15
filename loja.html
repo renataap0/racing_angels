@@ -58,35 +58,54 @@
       <section class="shop-layout">
         <div class="product-grid">
           <article class="product-card texture-panel apple-reveal">
-            <div class="product-visual product-visual-shirt" aria-hidden="true"></div>
+            <figure class="product-media">
+              <img src="assets/shop/image%20(3).png" alt="Kit com camiseta preta, camiseta amarela e certificado Racing Angels">
+            </figure>
             <p class="eyebrow">Uniforme</p>
-            <h2>Camisa Team Carbon</h2>
-            <p>Malha preta com detalhes em dourado champanhe e marca Racing Angels.</p>
+            <h2>Kit Team Carbon</h2>
+            <p>Duas camisetas oficiais com arte Racing Angels, acabamento premium e certificado de colecao.</p>
             <div class="product-row">
-              <strong>R$ 189,90</strong>
-              <button class="btn btn-primary shop-button" type="button" data-product="Camisa Team Carbon">Adicionar</button>
+              <strong>R$ 289,90</strong>
+              <button class="btn btn-primary shop-button" type="button" data-product="Kit Team Carbon" data-price="289.90">Adicionar</button>
             </div>
           </article>
 
           <article class="product-card texture-panel apple-reveal">
-            <div class="product-visual product-visual-cap" aria-hidden="true"></div>
-            <p class="eyebrow">Acessorio</p>
-            <h2>Bone Halo Apex</h2>
-            <p>Bone estruturado com logo A, asas laterais e acabamento premium.</p>
-            <div class="product-row">
-              <strong>R$ 119,90</strong>
-              <button class="btn btn-primary shop-button" type="button" data-product="Bone Halo Apex">Adicionar</button>
-            </div>
-          </article>
-
-          <article class="product-card texture-panel apple-reveal">
-            <div class="product-visual product-visual-jacket" aria-hidden="true"></div>
+            <figure class="product-media">
+              <img src="assets/shop/image%20(4).png" alt="Duas canecas pretas Racing Angels com logo e lema dourado">
+            </figure>
             <p class="eyebrow">Paddock</p>
-            <h2>Jaqueta Pit Lane</h2>
-            <p>Jaqueta leve, textura tecnica e contraste discreto para eventos da equipe.</p>
+            <h2>Canecas Duo Box</h2>
+            <p>Par de canecas pretas com logo frontal e lema da equipe para briefing, box e colecionadores.</p>
             <div class="product-row">
-              <strong>R$ 349,90</strong>
-              <button class="btn btn-primary shop-button" type="button" data-product="Jaqueta Pit Lane">Adicionar</button>
+              <strong>R$ 99,90</strong>
+              <button class="btn btn-primary shop-button" type="button" data-product="Canecas Duo Box" data-price="99.90">Adicionar</button>
+            </div>
+          </article>
+
+          <article class="product-card texture-panel apple-reveal">
+            <figure class="product-media product-media-tall">
+              <img src="assets/shop/image%20(5).png" alt="Luva preta Racing Angels com detalhes dourados">
+            </figure>
+            <p class="eyebrow">Pilotagem</p>
+            <h2>Luva Apex Grip</h2>
+            <p>Luva tecnica com palma reforcada, detalhe dourado e escudo Racing Angels no centro.</p>
+            <div class="product-row">
+              <strong>R$ 249,90</strong>
+              <button class="btn btn-primary shop-button" type="button" data-product="Luva Apex Grip" data-price="249.90">Adicionar</button>
+            </div>
+          </article>
+
+          <article class="product-card texture-panel apple-reveal product-card-wide">
+            <figure class="product-media product-media-wide">
+              <img src="assets/shop/image%20(2).png" alt="Colecao Racing Angels com canecas, camisetas, bone, garrafa, luva e carro">
+            </figure>
+            <p class="eyebrow">Colecao completa</p>
+            <h2>Pack Paddock Racing Angels</h2>
+            <p>Combo visual da equipe com canecas, camisetas, bone, garrafa, luva e item decorativo inspirado no carro.</p>
+            <div class="product-row">
+              <strong>R$ 649,90</strong>
+              <button class="btn btn-primary shop-button" type="button" data-product="Pack Paddock Racing Angels" data-price="649.90">Adicionar</button>
             </div>
           </article>
         </div>
@@ -97,6 +116,57 @@
           <ul class="cart-list" id="cartList">
             <li>Nenhum item adicionado.</li>
           </ul>
+
+          <div class="cart-totals" aria-live="polite">
+            <p><span>Subtotal</span><strong id="cartSubtotal">R$ 0,00</strong></p>
+            <p><span>Frete simulado</span><strong id="cartShipping">R$ 0,00</strong></p>
+            <p class="cart-total-line"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></p>
+          </div>
+
+          <form class="checkout-form" id="checkoutForm">
+            <p class="eyebrow">Pagamento</p>
+            <label>
+              <span>Nome completo</span>
+              <input type="text" name="customerName" maxlength="48" autocomplete="name" required>
+            </label>
+            <label>
+              <span>Email</span>
+              <input type="email" name="customerEmail" maxlength="64" autocomplete="email" required>
+            </label>
+            <label>
+              <span>CEP</span>
+              <input type="text" name="customerZip" inputmode="numeric" maxlength="9" placeholder="00000-000" autocomplete="postal-code" required>
+            </label>
+            <label>
+              <span>Metodo</span>
+              <select name="paymentMethod" id="paymentMethod" required>
+                <option value="card">Cartao simulado</option>
+                <option value="pix">Pix simulado</option>
+                <option value="ticket">Boleto simulado</option>
+              </select>
+            </label>
+
+            <div class="payment-fields" id="cardFields">
+              <label>
+                <span>Numero do cartao</span>
+                <input type="text" name="cardNumber" inputmode="numeric" maxlength="19" placeholder="0000 0000 0000 0000">
+              </label>
+              <div class="checkout-row">
+                <label>
+                  <span>Validade</span>
+                  <input type="text" name="cardExpiry" inputmode="numeric" maxlength="5" placeholder="MM/AA">
+                </label>
+                <label>
+                  <span>CVV</span>
+                  <input type="text" name="cardCvv" inputmode="numeric" maxlength="3" placeholder="000">
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" type="submit" id="checkoutButton">Finalizar compra</button>
+          </form>
+
+          <p class="form-message" id="checkoutMessage"></p>
           <button class="btn btn-dark" type="button" id="clearCartButton">Limpar carrinho</button>
         </aside>
       </section>
