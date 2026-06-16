@@ -60,7 +60,7 @@ cp .env.example .env
 Configure a conexao MySQL:
 
 ```env
-DATABASE_URL="mysql://root:senha@localhost:3306/racing_angels"
+DATABASE_URL="mysql://root:root@localhost:3306/racing_angels"
 JWT_SECRET="troque_essa_chave"
 PORT=3333
 ```
