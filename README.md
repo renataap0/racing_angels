@@ -1,45 +1,68 @@
-# Racing Angels/CorridaPro API
+# Racing Angels
 
-Backend completo em Node.js, Express, TypeScript, MySQL e Prisma ORM para integrar com o frontend Racing Angels/CorridaPro.
+Portal de motorsport para a equipe Racing Angels. O projeto tem um front-end em HTML, CSS e JavaScript e uma API REST em Node.js, Express, TypeScript, Prisma e MySQL.
 
-## Stack
+O sistema cobre login por perfil, gestao de equipe, pilotos, carros, pistas, corridas, temporadas, loja, pedidos, dashboard e analises de performance.
 
-- Node.js + Express
-- TypeScript
-- MySQL
-- Prisma ORM
-- JWT
-- bcrypt
-- Zod
-- CORS
-- dotenv
+## Tecnologias
 
-## Estrutura
+- Front-end: HTML, CSS e JavaScript puro
+- Back-end: Node.js, Express e TypeScript
+- Banco de dados: MySQL
+- ORM: Prisma
+- Autenticacao: JWT e bcrypt
+- Validacao: Zod
+- Integracao: fetch no front-end e CORS no back-end
+
+## Estrutura principal
 
 ```txt
-back-end/
-  prisma/
-    schema.prisma
-    seed.ts
-  src/
-    config/
-    controllers/
-    routes/
-    services/
-    middlewares/
-    schemas/
-    utils/
-    app.ts
-    server.ts
-  .env.example
-  package.json
-  tsconfig.json
-  README.md
+racing_angels/
+  front-end/
+    index.html
+    pages/
+      analytics.html
+      contato.html
+      dashboard.html
+      equipe.html
+      grid.html
+      login.html
+      loja.html
+      pistas.html
+    assets/
+      css/style.css
+      js/api.js
+      js/script.js
+
+  assets/
+    shop/
+      image (2).png
+      image (3).png
+      image (4).png
+      image (5).png
+
+  back-end/
+    prisma/
+      schema.prisma
+      seed.ts
+      migrations/
+    src/
+      app.ts
+      server.ts
+      config/
+      controllers/
+      routes/
+      services/
+      middlewares/
+      schemas/
+      utils/
+    package.json
+    tsconfig.json
 ```
 
-## Instalar e rodar
+## Como rodar o back-end
 
-Entre na pasta do backend:
+Entre na pasta do back-end:
 
 ```bash
 cd back-end
@@ -51,13 +74,13 @@ Instale as dependencias:
 npm install
 ```
 
-Crie o arquivo `.env` a partir do exemplo:
+Crie o arquivo `.env` com base no exemplo:
 
 ```bash
-cp .env.example .env
+copy .env.example .env
 ```
 
-Configure a conexao MySQL:
+Configure a conexao com o MySQL:
 
 ```env
 DATABASE_URL="mysql://root:root@localhost:3306/racing_angels"
@@ -65,84 +88,77 @@ JWT_SECRET="troque_essa_chave"
 PORT=3333
 ```
 
-Crie o banco MySQL, se ainda nao existir:
+Crie o banco no MySQL:
 
 ```sql
 CREATE DATABASE racing_angels;
 ```
 
-Rode os comandos obrigatorios:
+Gere o Prisma Client, rode as migrations e carregue os dados iniciais:
 
 ```bash
-npm install
 npx prisma generate
 npx prisma migrate dev --name init
 npx prisma db seed
+```
+
+Inicie a API:
+
+```bash
 npm run dev
 ```
 
-A API ficara em:
+A API fica disponivel em:
 
 ```txt
 http://localhost:3333
 ```
 
-## Usuarios seed
+## Como rodar o front-end
 
-| Usuario | Senha | Role |
+Na raiz do projeto, voce pode servir os arquivos estaticos:
+
+```bash
+npm install
+npm run dev
+```
+
+Depois acesse:
+
+```txt
+http://localhost:8080/front-end/index.html
+```
+
+Ponto de atencao: no estado atual, alguns arquivos HTML ainda apontam para `style.css`, `script.js` e links de paginas como se tudo estivesse na mesma pasta. Os arquivos reais estao em `front-end/assets/css/style.css`, `front-end/assets/js/script.js` e `front-end/pages/`. Se a tela abrir sem estilo ou algum link quebrar, ajuste os caminhos dos HTML antes da apresentacao visual.
+
+## Usuarios de teste
+
+O seed cria tres usuarios:
+
+| Usuario | Senha | Perfil |
 | --- | --- | --- |
 | admin | 123456 | admin |
 | equipe | 123456 | team |
 | corredor | 123456 | driver |
 
-## Login
+## Perfis e permissoes
 
-Todas as rotas exigem JWT, exceto `POST /api/auth/login`.
+- `admin`: pode criar, editar e excluir os principais cadastros.
+- `team`: pode criar corridas e pistas, editar corridas da propria equipe e gerenciar alguns dados operacionais.
+- `driver`: visualiza dados e pode fazer pedidos na loja.
 
-```bash
-curl -X POST http://localhost:3333/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"username\":\"admin\",\"password\":\"123456\"}"
-```
+Regras importantes:
 
-Resposta:
+- Todas as rotas `/api/*` exigem JWT, exceto `POST /api/auth/login`.
+- O middleware `authMiddleware` valida o token.
+- O middleware `requireRole` bloqueia acoes sem permissao.
+- Equipe nao pode excluir corrida.
+- Piloto nao pode criar, editar ou excluir corridas, pilotos, pistas ou carros.
+- Ao criar corrida como equipe, o back-end usa o `teamId` do usuario logado.
+- Pedido de loja calcula subtotal, frete e total no back-end.
+- Frete gratis quando o subtotal e maior ou igual a `500`; senao o frete e `39.90`.
 
-```json
-{
-  "token": "jwt...",
-  "user": {
-    "id": 1,
-    "username": "admin",
-    "role": "admin"
-  }
-}
-```
-
-Use o token nas demais rotas:
-
-```bash
-curl http://localhost:3333/api/races \
-  -H "Authorization: Bearer SEU_TOKEN"
-```
-
-## Permissoes
-
-- `admin`: controle total.
-- `team`: cria corrida, cadastra pista e edita pilotos da propria equipe.
-- `driver`: visualiza dados e pode fazer pedido na loja.
-
-Regras aplicadas:
-
-- Sem JWT, rotas protegidas retornam `401`.
-- `team` nao pode deletar corrida.
-- `driver` nao pode criar, editar ou excluir corridas, pilotos, pistas ou carros.
-- Ao criar corrida como `team`, o backend ignora `teamId` enviado e usa o `teamId` do usuario logado.
-- Pedidos calculam subtotal, frete e total no backend.
-- Frete gratis quando subtotal `>= 500`; senao `39.90`.
-- `order_items` usam o preco cadastrado em `products`.
-- `/api/races` retorna `driver`, `team`, `track` e `car` populados.
-
-## Rotas
+## Rotas principais
 
 ### Auth
 
@@ -201,123 +217,77 @@ Regras aplicadas:
 - `POST /api/season-rounds/:id/laps`
 - `GET /api/season-rounds/:id/laps`
 
-### Products
+### Products e Orders
 
 - `GET /api/products`
 - `GET /api/products/:id`
 - `POST /api/products`
 - `PUT /api/products/:id`
 - `DELETE /api/products/:id`
-
-### Orders
-
 - `GET /api/orders`
 - `GET /api/orders/:id`
 - `POST /api/orders`
 
-### Analytics
+### Analytics e Dashboard
 
 - `GET /api/analytics`
 - `GET /api/analytics/drivers`
 - `GET /api/analytics/tracks`
 - `GET /api/analytics/cars`
 - `GET /api/analytics/rankings`
-
-### Dashboard
-
 - `GET /api/dashboard/summary`
 
-## Filtros por query string
+## Teste rapido de login
 
-Algumas listagens aceitam filtros:
-
-```txt
-GET /api/races?teamId=1&status=Finalizada
-GET /api/drivers?teamId=1&status=Titular
-GET /api/cars?teamId=1
-GET /api/tracks?type=Rua
-GET /api/products?active=true&name=Camisa
-GET /api/teams?country=Brasil
+```bash
+curl -X POST http://localhost:3333/api/auth/login ^
+  -H "Content-Type: application/json" ^
+  -d "{\"username\":\"admin\",\"password\":\"123456\"}"
 ```
 
-## Exemplos de payload
+A resposta retorna um token JWT. Use esse token nas rotas protegidas:
 
-Criar corrida como admin:
-
-```json
-{
-  "name": "Silverstone Sprint",
-  "status": "Finalizada",
-  "laps": 28,
-  "bestLapMs": 87097,
-  "lastLapMs": 87930,
-  "teamId": 1,
-  "driverId": 1,
-  "trackId": 5,
-  "carId": 1
-}
+```bash
+curl http://localhost:3333/api/races ^
+  -H "Authorization: Bearer SEU_TOKEN"
 ```
 
-Criar pedido:
+## Banco de dados
 
-```json
-{
-  "customerName": "Lia Torres",
-  "customerEmail": "lia@example.com",
-  "customerZip": "01001000",
-  "paymentMethod": "card",
-  "items": [
-    { "productId": 1, "quantity": 2 },
-    { "productId": 3, "quantity": 1 }
-  ]
-}
-```
+O modelo esta em `back-end/prisma/schema.prisma`.
 
-## Integracao com o frontend
+Tabelas principais:
 
-O arquivo `src/utils/frontend-api-example.js` contem funcoes prontas:
+- `users`: usuarios e perfis de acesso.
+- `teams`: equipes.
+- `drivers`: pilotos.
+- `cars`: carros.
+- `tracks`: pistas.
+- `races`: corridas.
+- `seasons`, `season_rounds`, `season_round_laps`: temporada, etapas e voltas.
+- `products`, `orders`, `order_items`: loja e pedidos.
 
-- `API_BASE_URL`
-- `getToken`
-- `apiFetch`
-- `login`
-- `getRaces`
-- `createRace`
-- `deleteRace`
-- `getDrivers`
-- `updateDriver`
-- `getTracks`
-- `createTrack`
-- `getCars`
-- `getProducts`
-- `createOrder`
-- `getAnalytics`
-- `getDashboardSummary`
+O seed esta em `back-end/prisma/seed.ts` e cria dados iniciais para demonstracao: equipes, pilotos, carros, pistas, corridas, temporada, voltas, produtos e usuarios de teste.
 
-Copie ou importe essas funcoes no frontend e substitua as leituras de `localStorage` pelas chamadas da API.
+## Fluxo do codigo
 
-Exemplo:
+1. O usuario entra pelo front-end em `front-end/index.html` ou pela pagina de login.
+2. O login chama `POST /api/auth/login`.
+3. O back-end valida usuario e senha em `authService.ts`.
+4. Se estiver correto, o back-end gera um JWT.
+5. O front-end guarda o token no `localStorage`.
+6. Nas proximas requisicoes, `front-end/assets/js/api.js` envia `Authorization: Bearer TOKEN`.
+7. `authMiddleware.ts` valida o token.
+8. As rotas chamam controllers, os controllers chamam services, e os services acessam o banco via Prisma.
+9. O resultado volta como JSON para o front-end.
 
-```js
-import { login, getRaces } from "./back-end/src/utils/frontend-api-example.js";
+## Arquivos de apoio criados nesta organizacao
 
-await login("admin", "123456");
-const races = await getRaces();
-console.log(races);
-```
+- `ARQUIVOS_PARA_EXCLUIR.md`: lista conservadora de arquivos que podem ser removidos ou revisados.
+- `ROTEIRO_APRESENTACAO.md`: roteiro para apresentar o projeto e explicar as partes do codigo.
 
-Se o frontend estiver em outro host ou porta, o CORS ja esta habilitado no backend.
+## Pontos de atencao
 
-## Analytics
-
-O backend calcula:
-
-- Pontuacao de pilotos com `[25,18,15,12,10,8,6,4,2,1]`.
-- Consistencia do piloto: media de `abs(last_lap_ms - best_lap_ms)`.
-- Media de melhor volta.
-- Melhor volta.
-- Score do carro.
-- Eficiencia da pista.
-- Ranking geral com `best_driver`, `best_lap`, `best_car`, `best_track`, `most_consistent_driver`, `most_efficient_track`, `total_races`, `total_laps`, `avg_best_lap_ms`, `top_drivers`, `top_cars` e `top_tracks`.
-
-Todos os tempos de volta sao `INT` em milissegundos.
+- O arquivo `back-end/.env` esta rastreado pelo Git. O ideal e manter apenas `back-end/.env.example` no repositorio e deixar `.env` somente local.
+- Os documentos antigos de implementacao estao duplicados e com varios caracteres quebrados. Eles podem ser removidos depois que este README for validado.
+- O front-end tem caminhos de assets e paginas que precisam ser conferidos antes de uma demonstracao visual.
