@@ -63,13 +63,13 @@
           <p class="eyebrow">Apresentacao da equipe</p>
           <h2>Racing Angels</h2>
           <p>
-            Uma estrutura voltada para consistencia, estrategia e evolucao tecnica — conectando pilotos,
+            Uma estrutura voltada para consistencia, estrategia e evolucao tecnica - conectando pilotos,
             carros e dados em uma rotina profissional de performance.
           </p>
 
           <figure class="team-hero-media" aria-label="Foto da equipe Racing Angels">
             <img
-              src="../../image%20(7).png"
+              src="../assets/img/Racing%20Angels.png"
               alt="Foto oficial da Racing Angels"
               loading="lazy"
             />
@@ -95,25 +95,41 @@
         </article>
       </section>
 
-      <section class="features-section" aria-label="Pilotos da equipe">
+      <section class="features-section team-members-section" aria-label="Integrantes da equipe">
         <div class="section-heading apple-reveal">
-          <p class="eyebrow">Pilotos</p>
-          <h2>Equipe Racing Angels</h2>
+          <p class="eyebrow">Integrantes</p>
+          <h2>Racing Angels</h2>
         </div>
 
-        <div class="features-grid">
-          <article class="feature-card reveal-card" aria-label="Piloto Raphael Galhardo">
-            <figure class="driver-media" aria-hidden="true">
+        <div class="member-showcase apple-reveal">
+          <article class="member-display texture-panel" aria-live="polite">
+            <figure class="member-display-media">
               <img
-                src="../../image%20(6).png"
-                alt="Foto do piloto Raphael Galhardo"
+                id="memberPreviewImage"
+                src="../assets/img/Raphael%20Galhardo.png"
+                alt="Foto de Raphael Galhardo"
                 loading="lazy"
               />
             </figure>
-            <h3>Raphael Galhardo</h3>
-            <p>Definido como piloto oficial da Racing Angels.</p>
+            <div>
+              <p class="eyebrow" id="memberPreviewRole">Piloto oficial</p>
+              <h3 id="memberPreviewName">Raphael Galhardo</h3>
+              <p>Racing Angels</p>
+            </div>
           </article>
+
+          <div class="member-name-list" aria-label="Selecionar integrante">
+            <button class="member-name-button is-active" type="button" data-member-name="Raphael Galhardo" data-member-role="Piloto oficial" data-member-photo="../assets/img/Raphael%20Galhardo.png">Raphael Galhardo</button>
+            <button class="member-name-button" type="button" data-member-name="Renata Queiroz" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Renata%20Queiroz.png">Renata Queiroz</button>
+            <button class="member-name-button" type="button" data-member-name="Rafaela Santana" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Rafaela%20Santana.png">Rafaela Santana</button>
+            <button class="member-name-button" type="button" data-member-name="Gabriela Bas&iacute;lio" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Gabriela%20Bas%C3%ADlio.png">Gabriela Bas&iacute;lio</button>
+            <button class="member-name-button" type="button" data-member-name="Murilo Ara&uacute;jo" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Murilo%20Ara%C3%BAjo.png">Murilo Ara&uacute;jo</button>
+            <button class="member-name-button" type="button" data-member-name="Luca Guidoni" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Luca%20Guidoni.png">Luca Guidoni</button>
+            <button class="member-name-button" type="button" data-member-name="Ryan Soares" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Ryan%20Soares.png">Ryan Soares</button>
+            <button class="member-name-button" type="button" data-member-name="Vitor Guimar&atilde;es" data-member-role="Equipe Racing Angels" data-member-photo="../assets/img/Vitor%20Guimar%C3%A3es.png">Vitor Guimar&atilde;es</button>
+          </div>
         </div>
+
       </section>
 
       <section class="features-section">
@@ -145,5 +161,34 @@
 
   <script src="../assets/js/api.js"></script>
   <script src="../assets/js/script.js"></script>
+  <script>
+    (() => {
+      const previewImage = document.getElementById("memberPreviewImage");
+      const previewName = document.getElementById("memberPreviewName");
+      const previewRole = document.getElementById("memberPreviewRole");
+      const memberButtons = document.querySelectorAll("[data-member-photo]");
+
+      if (!previewImage || !previewName || !previewRole || !memberButtons.length) {
+        return;
+      }
+
+      memberButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const name = button.dataset.memberName;
+          const role = button.dataset.memberRole;
+          const photo = button.dataset.memberPhoto;
+
+          previewImage.src = photo;
+          previewImage.alt = `Foto de ${name}`;
+          previewName.textContent = name;
+          previewRole.textContent = role;
+
+          memberButtons.forEach((item) => {
+            item.classList.toggle("is-active", item === button);
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

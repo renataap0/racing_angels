@@ -61,7 +61,7 @@ window.getCarsApi = (filters = {}) => window.apiFetch(`/cars${window.buildQueryS
 window.getTracksApi = (filters = {}) => window.apiFetch(`/tracks${window.buildQueryString(filters)}`);
 window.getRacesApi = (filters = {}) => window.apiFetch(`/races${window.buildQueryString(filters)}`);
 window.getProductsApi = (filters = {}) => window.apiFetch(`/products${window.buildQueryString(filters)}`);
-window.getDashboardApi = () => window.apiFetch("/dashboard");
+window.getDashboardApi = () => window.apiFetch("/dashboard/summary");
 window.getAnalyticsApi = () => window.apiFetch("/analytics");
 
 window.updateDriverApi = (id, payload) => window.apiFetch(`/drivers/${id}`, {
