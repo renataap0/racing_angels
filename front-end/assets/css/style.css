@@ -1,4 +1,4 @@
-﻿:root {
+﻿ paras:root {
   --color-black: #030303;
   --color-ink: #090a0c;
   --color-panel: #111216;
@@ -1240,7 +1240,53 @@ h3 {
 .manual-race-form select,
 .manual-race-form textarea,
 .driver-editor input,
-.driver-editor select {
+.driver-editor select,
+.track-car-form input,
+.track-car-form select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  color: var(--color-white);
+  outline: none;
+  background: rgba(0, 0, 0, 0.22);
+  transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.track-car-form input:focus,
+.track-car-form select:focus {
+  border-color: rgba(199, 161, 90, 0.72);
+  box-shadow: var(--shadow-gold);
+}
+
+.track-car-form input:disabled,
+.track-car-form select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.track-car-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.track-car-form label span {
+  color: var(--color-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+
+.login-form input:focus,
+.manual-race-form input:focus,
+.manual-race-form select:focus,
+.manual-race-form textarea:focus,
+.driver-editor input:focus,
+.driver-editor select:focus {
+
   width: 100%;
   min-height: 46px;
   padding: 0 12px;

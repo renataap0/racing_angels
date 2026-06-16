@@ -346,7 +346,7 @@ const defaultTrackCars = [
   },
   {
     id: 5,
-    driver: "Gabriela Basilio",
+    driver: "Gabriela Basílio",
     team: "Kerberus",
     carNumber: "44",
     race: "Interlagos GP",
@@ -360,7 +360,7 @@ const defaultTrackCars = [
   },
   {
     id: 6,
-    driver: "Murilo Araujo",
+    driver: "Murilo Araújo",
     team: "Wind Speed",
     carNumber: "55",
     race: "Interlagos GP",
@@ -388,7 +388,7 @@ const defaultTrackCars = [
   },
   {
     id: 8,
-    driver: "Vitor Guimaraes",
+    driver: "Vitor Guimarães",
     team: "Septem",
     carNumber: "77",
     race: "Interlagos GP",
