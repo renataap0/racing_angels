@@ -1,0 +1,167 @@
+DOCUMENTAÇÃO DO BACKEND (STEP A STEP) — JWT + Rotas (para gerar versão em JavaScript)
+
+1) Visão geral
+Backend: API REST feita com Node.js + Express + TypeScript + Prisma.
+Autenticação: JWT (JSON Web Token).
+Porta: http://localhost:3333 (padrão em env.port).
+
+2) Como o backend está organizado (pasta e responsabilidade)
+- src/server.ts
+  Sobe o servidor HTTP e escuta a porta definida em env.
+
+- src/app.ts
+  Configura middlewares globais (CORS, express.json), registra rotas e ativa autenticação com JWT.
+
+- src/routes/
+  Define endpoints (método HTTP + path) e aponta para controllers.
+
+- src/controllers/
+  Recebe request/response, valida entrada quando aplicável e chama services.
+
+- src/services/
+  Regras de negócio e acesso ao banco via Prisma.
+
+- src/middlewares/
+  authMiddleware.ts: valida JWT e injeta req.user.
+  requireRole.ts: (quando usado) restringe por role.
+  errorMiddleware.ts: tratamento padrão de erros.
+
+- src/config/
+  env.ts: leitura de variáveis e configuração (port, jwtSecret).
+  prisma.ts: inicialização do PrismaClient.
+
+- src/schemas/
+  Validação (ex.: Zod) para payloads (como login).
+
+- src/utils/
+  AppError, asyncHandler e helpers.
+
+3) Fluxo de inicialização (passo a passo)
+3.1 src/server.ts
+1. Importa { app } de ./app.
+2. Importa { env } de ./config/env.
+3. Chama app.listen(env.port, ...).
+
+3.2 src/app.ts
+1. app.use(cors())
+2. app.use(express.json())
+3. Rotas públicas:
+   - app.use("/api/auth", authRoutes)
+   Isso garante que o POST /api/auth/login não precisa de token.
+4. Middleware JWT global:
+   - app.use("/api", authMiddleware)
+   A partir daí, as rotas registradas depois tendem a exigir token.
+5. Rotas protegidas registradas em seguida:
+   /api/users
+   /api/teams
+   /api/drivers
+   /api/cars
+   /api/tracks
+   /api/races
+   /api/seasons
+   /api/season-rounds
+   /api/products
+   /api/orders
+   /api/analytics
+   /api/dashboard
+6. Fallback 404:
+   - qualquer rota não registrada cai em "Rota nao encontrada." (404)
+7. errorMiddleware
+   - formata respostas de erro.
+
+4) Autenticação JWT (passo a passo)
+4.1 Login (rota pública)
+Endpoint:
+- POST /api/auth/login
+Arquitetura:
+- route -> controller -> service
+
+Fluxo detalhado:
+1. Controller recebe request.body.
+2. Valida com loginSchema (Zod).
+3. Service authService.login(username, password):
+   3.1 Busca usuário no banco por username.
+   3.2 Se não existir: AppError 401 "Usuario ou senha invalidos."
+   3.3 Compara senha com bcrypt.compare.
+   3.4 Se não bater: AppError 401 "Usuario ou senha invalidos."
+   3.5 Gera token JWT com:
+       - payload: username, role, teamId, driverId
+       - subject (sub): user.id
+       - expiresIn: "8h"
+4. Retorna JSON:
+   - { token, user: { id, username, role, teamId, driverId, ... } }
+
+4.2 authMiddleware (proteção das rotas)
+Arquivo:
+- src/middlewares/authMiddleware.ts
+
+Comportamento:
+1. Lê header Authorization.
+2. Exige formato: "Bearer <token>".
+   - Se não existir: 401 "Token JWT nao informado."
+3. Verifica token:
+   - jwt.verify(token, env.jwtSecret)
+4. Se inválido/expirado:
+   - 401 "Token JWT invalido ou expirado."
+5. Se válido:
+   injeta req.user com:
+   - id (Number(decoded.sub))
+   - username
+   - role
+   - teamId (decoded.teamId ?? null)
+   - driverId (decoded.driverId ?? null)
+6. next() para continuar.
+
+5) Rotas principais (importantes para testar no Thunder/Postman)
+Base URL:
+- http://localhost:3333
+
+5.1 Auth
+- POST http://localhost:3333/api/auth/login
+  Body (JSON):
+  {"username":"SEU_USUARIO","password":"SUA_SENHA"}
+  Sem token.
+
+5.2 Dashboard
+- GET http://localhost:3333/api/dashboard/summary
+
+5.3 Analytics
+- GET http://localhost:3333/api/analytics/
+- GET http://localhost:3333/api/analytics/drivers
+- GET http://localhost:3333/api/analytics/tracks
+- GET http://localhost:3333/api/analytics/cars
+- GET http://localhost:3333/api/analytics/rankings
+
+6) Como testar cada rota no Thunder/Postman (passo a passo)
+1. Faça login:
+   - POST /api/auth/login
+   - Salve o campo token retornado.
+2. Para QUALQUER rota protegida (todas as rotas sob /api após authMiddleware):
+   - Header:
+     Authorization: Bearer SEU_TOKEN
+3. Teste os endpoints principais:
+   - GET /api/dashboard/summary
+   - GET /api/analytics/
+   - GET /api/analytics/drivers
+   - GET /api/analytics/tracks
+   - GET /api/analytics/cars
+   - GET /api/analytics/rankings
+4. Interpretação de erros comuns:
+   - 401 Token JWT nao informado / invalido:
+     Token ausente ou errado.
+   - 403 Usuario sem permissao para esta acao:
+     token existe mas role não permite.
+   - 404 Rota nao encontrada:
+     path/método incorreto.
+
+7) Prompt pronto para pedir a outra IA: “converter para JavaScript mantendo JWT e rotas”
+Copie e cole este texto para a IA:
+
+"Converter o backend Express de TypeScript para JavaScript mantendo a mesma arquitetura (server/app/routes/controllers/services/middlewares/utils). Preservar autenticação JWT: implementar authMiddleware que exige Authorization: Bearer <token>, faz jwt.verify com jwtSecret, injeta req.user com id, username, role, teamId, driverId. Preservar rota pública POST /api/auth/login que valida body (pode substituir Zod por validação JS, mas manter o mesmo contrato), autentica com bcrypt, gera JWT com sub=user.id, payload com username/role/teamId/driverId e expira em 8h. Preservar todos os endpoints e paths conforme o app.ts e arquivos de routes/* do projeto. Manter tratamento centralizado de erros usando um AppError e errorMiddleware com respostas JSON consistentes. Produzir arquivos .js equivalentes em uma estrutura equivalente e atualizar package.json scripts se necessário (start/dev/build)."
+
+8) Observações importantes
+- Como /api/auth foi registrado antes do authMiddleware global, /api/auth/login é a única rota pública padrão.
+- Garanta que a porta e jwtSecret estejam configuradas via env (dotenv ou leitura equivalente).
+
+FIM DO ARQUIVO
+
