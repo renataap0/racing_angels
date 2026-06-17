@@ -222,9 +222,9 @@ CREATE TABLE itens_pedido (
 INSERT INTO usuarios 
 (nome_usuario, senha_hash, perfil) 
 VALUES
-('admin', 'admin', 'admin'),
-('equipe', 'equipe', 'equipe'),
-('corredor', 'corredor', 'piloto');
+('admin', '$2b$10$AW7H6V6lUV9Eh5kjGkCdQuW4UCeB7E0yxinEqOAhnl5JGesEwATHy', 'admin'),
+('equipe', '$2b$10$AW7H6V6lUV9Eh5kjGkCdQuW4UCeB7E0yxinEqOAhnl5JGesEwATHy', 'equipe'),
+('corredor', '$2b$10$AW7H6V6lUV9Eh5kjGkCdQuW4UCeB7E0yxinEqOAhnl5JGesEwATHy', 'piloto');
 
 INSERT INTO equipes 
 (nome) 

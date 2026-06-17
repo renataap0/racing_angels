@@ -4,9 +4,9 @@
   "description": "Frontend para Racing Angels - Motorsport Performance Portal",
   "private": true,
   "scripts": {
-    "serve": "npx serve .",
-    "dev": "python -m http.server 8080",
-    "start": "npx serve . -p 8080"
+    "serve": "serve . --no-clipboard",
+    "dev": "serve . -l 8080 --no-clipboard",
+    "start": "serve . -l 8080 --no-clipboard"
   },
   "keywords": [
     "racing",
